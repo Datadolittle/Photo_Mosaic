@@ -19,12 +19,14 @@ python3 -m pip install numpy
 The mosaic creator will only work for jpeg or jpg formats. This script checks for the proper format and moves unusable images to a new folder. 
 
 ```
-python Image_Tester.py --images Trees --move
+python scripts/Image_Tester.py --images data/Trees 
 ```
+
+The unusable images will be moved to the Unusable_Images folder and the mosiac is ready for creation. 
 
 **Create Mosaic**
 
 ```
-python Mosaic_Creator.py --target Tree.jpg --images Trees --grid 100 100
+python scripts/Mosaic_Creator.py --target data/Tree.jpg --images data/Trees/ --grid 100 100 --output data/Mosaic.jpeg
 ```
 
