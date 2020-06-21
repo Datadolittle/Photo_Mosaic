@@ -1,4 +1,4 @@
-# Photo_Mosaic
+# Photo Mosaic using Python
 A repository to create photo mosaics using python3
 
 <img src="https://github.com/Datadolittle/Photo_Mosaic/blob/master/data/mosaic.jpeg" height="550" width="400">
