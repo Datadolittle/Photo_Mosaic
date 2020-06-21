@@ -1,7 +1,7 @@
 # Photo_Mosaic
 A repository to create photo mosaics using python3
 
-
+<img src="https://github.com/Datadolittle/Photo_Mosaic/blob/master/data/mosaic.jpeg" height="550" width="400">
 
 
 The photo mosaic program requires Pillow and numpy to process the images and matrix manipulation respectively. 
