@@ -82,7 +82,10 @@ def createPhotomosaic(target_image, input_images, grid_size,
     batch_size = int(len(target_images) / 10)
     avgs = []
     for img in input_images:
-        avgs.append(getAverageRGB(img))
+        try:
+            avgs.append(getAverageRGB(img))
+        except ValueError:
+            continue
 
     for img in target_images:
         avg = getAverageRGB(img)
