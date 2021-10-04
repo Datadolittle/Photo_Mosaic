@@ -8,9 +8,16 @@ parser.add_argument('--target', dest='target', required=True, help="Image to cre
 parser.add_argument('--images', dest='images', required=True, help="Diectory of images")
 parser.add_argument('--grid', nargs=2, dest='grid', required=True, help="Size of photo mosaic")
 parser.add_argument('--output', dest='output', required=False)
+parser.add_argument('--reuse', dest='reuse', action='store_true')
+parser.add_argument('--no-reuse', dest='reuse', action='store_false')
+parser.set_defaults(reuse=True)
+parser.add_argument('--resize', dest='resize', action='store_true')
+parser.add_argument('--no-resize', dest='resize', action='store_false')
+parser.set_defaults(resize=True)
 
 args = parser.parse_args()
 
+MATCH_INDECES = []
 
 def getImages(images_directory):
     files = os.listdir(images_directory)
@@ -54,10 +61,14 @@ def getBestMatchIndex(input_avg, avgs):
         dist = ((val[0] - avg[0]) * (val[0] - avg[0]) +
                 (val[1] - avg[1]) * (val[1] - avg[1]) +
                 (val[2] - avg[2]) * (val[2] - avg[2]))
-        if dist < min_dist:
+        if dist < min_dist and index not in MATCH_INDECES:
             min_dist = dist
             min_index = index
         index += 1
+    # Global store of matched indexes if no reuse
+    if not reuse_images:
+        MATCH_INDECES.append(min_index)
+
     return (min_index)
 
 
@@ -74,7 +85,7 @@ def createImageGrid(images, dims):
 
 
 def createPhotomosaic(target_image, input_images, grid_size,
-                      reuse_images=True):
+                      reuse_images):
     target_images = splitImage(target_image, grid_size)
 
     output_images = []
@@ -94,9 +105,6 @@ def createPhotomosaic(target_image, input_images, grid_size,
         if count > 0 and batch_size > 10 and count % batch_size is 0:
             print('processed %d of %d...' % (count, len(target_images)))
         count += 1
-        # remove selected image from input if flag set
-        if not reuse_images:
-            input_images.remove(match_index)
 
     mosaic_image = createImageGrid(output_images, grid_size)
     return (mosaic_image)
@@ -120,7 +128,7 @@ if input_images == []:
 random.shuffle(input_images)
 
 # size of grid
-grid_size = (int(args.grid[0]), int(args.grid[1]))
+grid_size = (int(args.grid[1]), int(args.grid[0]))
 
 # output
 output_filename = 'mosaic.jpeg'
@@ -128,10 +136,10 @@ if args.output:
     output_filename = args.output
 
 # re-use any image in input
-reuse_images = True
+reuse_images = args.reuse
 
 # resize the input to fit original image size?
-resize_input = True
+resize_input = args.resize
 
 print('starting photomosaic creation...')
 
