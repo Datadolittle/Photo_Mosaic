@@ -128,7 +128,7 @@ if input_images == []:
 random.shuffle(input_images)
 
 # size of grid
-grid_size = (int(args.grid[0]), int(args.grid[1]))
+grid_size = (int(args.grid[1]), int(args.grid[0]))
 
 # output
 output_filename = 'mosaic.jpeg'
