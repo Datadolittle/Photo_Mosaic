@@ -17,6 +17,7 @@ parser.set_defaults(resize=True)
 
 args = parser.parse_args()
 
+MATCH_INDECES = []
 
 def getImages(images_directory):
     files = os.listdir(images_directory)
@@ -60,10 +61,14 @@ def getBestMatchIndex(input_avg, avgs):
         dist = ((val[0] - avg[0]) * (val[0] - avg[0]) +
                 (val[1] - avg[1]) * (val[1] - avg[1]) +
                 (val[2] - avg[2]) * (val[2] - avg[2]))
-        if dist < min_dist:
+        if dist < min_dist and index not in MATCH_INDECES:
             min_dist = dist
             min_index = index
         index += 1
+    # Global store of matched indexes if no reuse
+    if not reuse_images:
+        MATCH_INDECES.append(min_index)
+
     return (min_index)
 
 
