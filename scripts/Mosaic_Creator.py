@@ -134,10 +134,10 @@ if args.output:
     output_filename = args.output
 
 # re-use any image in input
-reuse_images = True
+reuse_images = args.reuse
 
 # resize the input to fit original image size?
-resize_input = True
+resize_input = args.resize
 
 print('starting photomosaic creation...')
 
