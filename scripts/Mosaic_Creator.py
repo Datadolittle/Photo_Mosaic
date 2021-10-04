@@ -85,7 +85,7 @@ def createImageGrid(images, dims):
 
 
 def createPhotomosaic(target_image, input_images, grid_size,
-                      reuse_images=reuse_images):
+                      reuse_images):
     target_images = splitImage(target_image, grid_size)
 
     output_images = []
