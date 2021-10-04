@@ -8,6 +8,12 @@ parser.add_argument('--target', dest='target', required=True, help="Image to cre
 parser.add_argument('--images', dest='images', required=True, help="Diectory of images")
 parser.add_argument('--grid', nargs=2, dest='grid', required=True, help="Size of photo mosaic")
 parser.add_argument('--output', dest='output', required=False)
+parser.add_argument('--reuse', dest='reuse', action='store_true')
+parser.add_argument('--no-reuse', dest='reuse', action='store_false')
+parser.set_defaults(reuse=True)
+parser.add_argument('--resize', dest='resize', action='store_true')
+parser.add_argument('--no-resize', dest='resize', action='store_false')
+parser.set_defaults(resize=True)
 
 args = parser.parse_args()
 
