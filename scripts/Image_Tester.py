@@ -13,7 +13,7 @@ args = parser.parse_args()
 moveme = []
 ## This tests to make sure the dimensions of all the photos are the same
 for filename in os.listdir(args.images):
-    path = args.images+filename
+    path = os.path.abspath(os.path.join(args.images, filename))
     try:
         x = Image.open(path)
         im = np.array(x)
