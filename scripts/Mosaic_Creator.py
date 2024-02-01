@@ -19,7 +19,7 @@ parser.set_defaults(shuffle=False)
 parser.add_argument('--alpha', nargs=2, dest='alpha', type=int, help='The alpha for images and target-image, The alpha values for images and target-image, in the range [0, 255]')
 parser.set_defaults(alpha=[255, 0])
 parser.add_argument('--magnify', nargs=1, dest='magnification', type=float, help='Enlarge the final out_img, float type')
-parser.set_defaults(magnification=1.0)
+parser.set_defaults(magnification=(1.0,))
 
 
 args = parser.parse_args()
@@ -204,9 +204,10 @@ if resize_input:
             int(target_image.size[1]*magnify / grid_size[0]))
 
     # resize
-    for img in input_images:
-        img.thumbnail(dims) # If you want to enlarge the image to a vary great extent, use resize() insteadly
-
+    for i, img in enumerate(input_images):
+        input_images[i] = img.resize((dims)) 
+        # If imgs are small size, thumbnail may make [black strap] between every grids
+        # So, using resize() insteadly, even though potential performance overhead.
 
 # create photomosaic
 mosaic_image = createPhotomosaic(target_image, input_images, grid_size, reuse_images,shuffle_input,alpha_input)
