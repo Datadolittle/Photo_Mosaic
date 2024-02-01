@@ -14,6 +14,8 @@ parser.set_defaults(reuse=True)
 parser.add_argument('--resize', dest='resize', action='store_true')
 parser.add_argument('--no-resize', dest='resize', action='store_false')
 parser.set_defaults(resize=True)
+parser.add_argument('--shuffle', dest='shuffle', action='store_true',help='Whether shuffle the sequence when setting the grids')
+parser.set_defaults(shuffle=False)
 
 args = parser.parse_args()
 
@@ -85,10 +87,13 @@ def createImageGrid(images, dims):
 
 
 def createPhotomosaic(target_image, input_images, grid_size,
-                      reuse_images):
+                      reuse_images,
+                      if_shuffle):
     target_images = splitImage(target_image, grid_size)
 
-    output_images = []
+    # init a list. Using list[index] to set elements, no list.append().
+    output_images = list(range(len(target_images)))
+
     count = 0
     batch_size = int(len(target_images) / 10)
     avgs = []
@@ -98,10 +103,15 @@ def createPhotomosaic(target_image, input_images, grid_size,
         except ValueError:
             continue
 
-    for img in target_images:
+    grid_indices = np.arange(len(target_images))
+    if (if_shuffle):
+        np.random.shuffle(grid_indices) # shuffle the indexes
+
+    for index in grid_indices:
+        img=target_images[index]
         avg = getAverageRGB(img)
         match_index = getBestMatchIndex(avg, avgs)
-        output_images.append(input_images[match_index])
+        output_images[index]=input_images[match_index] # set the grid
         if count > 0 and batch_size > 10 and count % batch_size is 0:
             print('processed %d of %d...' % (count, len(target_images)))
         count += 1
@@ -124,8 +134,6 @@ if input_images == []:
     print('No input images found in %s. Exiting.' % (args.images,))
     exit()
 
-# shuffle list - to get a more varied output?
-random.shuffle(input_images)
 
 # size of grid
 grid_size = (int(args.grid[1]), int(args.grid[0]))
@@ -140,6 +148,9 @@ reuse_images = args.reuse
 
 # resize the input to fit original image size?
 resize_input = args.resize
+
+# If true, set the grids in random order, rather than ascending order.
+shuffle_input = args.shuffle
 
 print('starting photomosaic creation...')
 
@@ -161,7 +172,7 @@ if resize_input:
         img.thumbnail(dims)
 
 # create photomosaic
-mosaic_image = createPhotomosaic(target_image, input_images, grid_size, reuse_images)
+mosaic_image = createPhotomosaic(target_image, input_images, grid_size, reuse_images,shuffle_input)
 
 # write out mosaic
 mosaic_image.save(output_filename, 'jpeg')
