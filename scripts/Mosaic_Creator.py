@@ -14,12 +14,19 @@ parser.set_defaults(reuse=True)
 parser.add_argument('--resize', dest='resize', action='store_true')
 parser.add_argument('--no-resize', dest='resize', action='store_false')
 parser.set_defaults(resize=True)
+parser.add_argument('--shuffle', dest='shuffle', action='store_true',help='Whether shuffle the sequence when setting the grids')
+parser.set_defaults(shuffle=False)
+parser.add_argument('--alpha', nargs=2, dest='alpha', type=int, help='The alpha for images and target-image, The alpha values for images and target-image, in the range [0, 255]')
+parser.set_defaults(alpha=[255, 0])
+parser.add_argument('--magnify', nargs=1, dest='magnification', type=float, help='Enlarge the final out_img, float type')
+parser.set_defaults(magnification=(1.0,))
+
 
 args = parser.parse_args()
 
 MATCH_INDECES = []
 
-def getImages(images_directory):
+def getImages(images_directory,alpha_input):
     files = os.listdir(images_directory)
     images = []
     for file in files:
@@ -27,6 +34,14 @@ def getImages(images_directory):
         try:
             fp = open(filePath, "rb")
             im = Image.open(fp)
+
+            if not alpha_input[0] == 255:
+                # in alpha[0] not default(255), reset alpha of every img
+                im=im.convert("RGBA")
+                r, g, b, alpha = im.split()
+                alpha = alpha.point(lambda i: i>0 and alpha_input[0])
+                im.putalpha(alpha)
+      
             images.append(im)
             im.load()
             fp.close()
@@ -76,7 +91,7 @@ def createImageGrid(images, dims):
     m, n = dims
     width = max([img.size[0] for img in images])
     height = max([img.size[1] for img in images])
-    grid_img = Image.new('RGB', (n * width, m * height))
+    grid_img = Image.new('RGBA', (n * width, m * height))   # always set as RGBA, until writing out img then check whether discard alpha 
     for index in range(len(images)):
         row = int(index / n)
         col = index - n * row
@@ -85,10 +100,14 @@ def createImageGrid(images, dims):
 
 
 def createPhotomosaic(target_image, input_images, grid_size,
-                      reuse_images):
+                      reuse_images,#useless?
+                      if_shuffle,
+                      alpha_input):
     target_images = splitImage(target_image, grid_size)
 
-    output_images = []
+    # init a list. Using list[index] to set elements, no list.append().
+    output_images = list(range(len(target_images)))
+
     count = 0
     batch_size = int(len(target_images) / 10)
     avgs = []
@@ -98,34 +117,56 @@ def createPhotomosaic(target_image, input_images, grid_size,
         except ValueError:
             continue
 
-    for img in target_images:
+    grid_indices = np.arange(len(target_images))
+    if (if_shuffle):
+        np.random.shuffle(grid_indices) # shuffle the indexes
+
+    for index in grid_indices:
+        img=target_images[index]
         avg = getAverageRGB(img)
         match_index = getBestMatchIndex(avg, avgs)
-        output_images.append(input_images[match_index])
+        output_images[index]=input_images[match_index] # set the grid
         if count > 0 and batch_size > 10 and count % batch_size is 0:
             print('processed %d of %d...' % (count, len(target_images)))
         count += 1
 
+
     mosaic_image = createImageGrid(output_images, grid_size)
+
+    if not alpha_input[1] == 0:
+        
+        # reset the alpha layer of target_image
+        target_image = target_image.convert("RGBA")
+        r, g, b, alpha = target_image.split()
+        alpha = alpha.point(lambda i: i>0 and alpha_input[1])
+        target_image.putalpha(alpha)
+
+        # resize the target_image, matching the final out-img
+        target_image = target_image.resize(mosaic_image.size)
+
+        # merge target_image and Composite img
+        result_image = Image.alpha_composite(mosaic_image, target_image)
+        return (result_image)
+    
     return (mosaic_image)
 
 
 ### ---------------------------------------------
 
+# alpha value of ..
+alpha_input = args.alpha
 
 target_image = Image.open(args.target)
 
 # input images
 print('reading input folder...')
-input_images = getImages(args.images)
+input_images = getImages(args.images,alpha_input)
 
 # check if any valid input images found
 if input_images == []:
     print('No input images found in %s. Exiting.' % (args.images,))
     exit()
 
-# shuffle list - to get a more varied output?
-random.shuffle(input_images)
 
 # size of grid
 grid_size = (int(args.grid[1]), int(args.grid[0]))
@@ -141,6 +182,12 @@ reuse_images = args.reuse
 # resize the input to fit original image size?
 resize_input = args.resize
 
+# If true, set the grids in random order, rather than ascending order.
+shuffle_input = args.shuffle
+
+# magnification for final output
+magnify = args.magnification[0]
+
 print('starting photomosaic creation...')
 
 # if images can't be reused, ensure m*n <= num_of_images
@@ -153,18 +200,24 @@ if not reuse_images:
 if resize_input:
     print('resizing images...')
     # for given grid size, compute max dims w,h of tiles
-    dims = (int(target_image.size[0] / grid_size[1]),
-            int(target_image.size[1] / grid_size[0]))
-    print("max tile dims: %s" % (dims,))
+    dims = (int(target_image.size[0]*magnify / grid_size[1]),
+            int(target_image.size[1]*magnify / grid_size[0]))
+
     # resize
-    for img in input_images:
-        img.thumbnail(dims)
+    for i, img in enumerate(input_images):
+        input_images[i] = img.resize((dims)) 
+        # If imgs are small size, thumbnail may make [black strap] between every grids
+        # So, using resize() insteadly, even though potential performance overhead.
 
 # create photomosaic
-mosaic_image = createPhotomosaic(target_image, input_images, grid_size, reuse_images)
+mosaic_image = createPhotomosaic(target_image, input_images, grid_size, reuse_images,shuffle_input,alpha_input)
 
 # write out mosaic
-mosaic_image.save(output_filename, 'jpeg')
+if alpha_input == [255, 0]:
+    mosaic_image.convert("RGB").save(output_filename, 'jpeg')  #defalut, no alpha, always discard alpha
+else:
+    mosaic_image.save(output_filename, 'png')   #customer alpha
+
 
 print("saved output to %s" % (output_filename,))
 print('done.')
