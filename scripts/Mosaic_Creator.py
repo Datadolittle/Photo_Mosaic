@@ -17,7 +17,10 @@ parser.set_defaults(resize=True)
 parser.add_argument('--shuffle', dest='shuffle', action='store_true',help='Whether shuffle the sequence when setting the grids')
 parser.set_defaults(shuffle=False)
 parser.add_argument('--alpha', nargs=2, dest='alpha', type=int, help='The alpha for images and target-image, The alpha values for images and target-image, in the range [0, 255]')
-parser.set_defaults(alpha=(255, 0))
+parser.set_defaults(alpha=[255, 0])
+parser.add_argument('--magnify', nargs=1, dest='magnification', type=float, help='Enlarge the final out_img, float type')
+parser.set_defaults(magnification=1.0)
+
 
 args = parser.parse_args()
 
@@ -36,9 +39,9 @@ def getImages(images_directory,alpha_input):
                 # in alpha[0] not default(255), reset alpha of every img
                 im=im.convert("RGBA")
                 r, g, b, alpha = im.split()
-                alpha = alpha.point(lambda i: i>0 and args.alpha[0])
+                alpha = alpha.point(lambda i: i>0 and alpha_input[0])
                 im.putalpha(alpha)
-
+      
             images.append(im)
             im.load()
             fp.close()
@@ -88,7 +91,7 @@ def createImageGrid(images, dims):
     m, n = dims
     width = max([img.size[0] for img in images])
     height = max([img.size[1] for img in images])
-    grid_img = Image.new('RGB', (n * width, m * height))
+    grid_img = Image.new('RGBA', (n * width, m * height))   # always set as RGBA, until writing out img then check whether discard alpha 
     for index in range(len(images)):
         row = int(index / n)
         col = index - n * row
@@ -97,7 +100,7 @@ def createImageGrid(images, dims):
 
 
 def createPhotomosaic(target_image, input_images, grid_size,
-                      reuse_images,
+                      reuse_images,#useless?
                       if_shuffle,
                       alpha_input):
     target_images = splitImage(target_image, grid_size)
@@ -126,6 +129,7 @@ def createPhotomosaic(target_image, input_images, grid_size,
         if count > 0 and batch_size > 10 and count % batch_size is 0:
             print('processed %d of %d...' % (count, len(target_images)))
         count += 1
+
 
     mosaic_image = createImageGrid(output_images, grid_size)
 
@@ -181,6 +185,9 @@ resize_input = args.resize
 # If true, set the grids in random order, rather than ascending order.
 shuffle_input = args.shuffle
 
+# magnification for final output
+magnify = args.magnification[0]
+
 print('starting photomosaic creation...')
 
 # if images can't be reused, ensure m*n <= num_of_images
@@ -193,19 +200,20 @@ if not reuse_images:
 if resize_input:
     print('resizing images...')
     # for given grid size, compute max dims w,h of tiles
-    dims = (int(target_image.size[0] / grid_size[1]),
-            int(target_image.size[1] / grid_size[0]))
-    print("max tile dims: %s" % (dims,))
+    dims = (int(target_image.size[0]*magnify / grid_size[1]),
+            int(target_image.size[1]*magnify / grid_size[0]))
+
     # resize
     for img in input_images:
-        img.thumbnail(dims)
+        img.thumbnail(dims) # If you want to enlarge the image to a vary great extent, use resize() insteadly
+
 
 # create photomosaic
 mosaic_image = createPhotomosaic(target_image, input_images, grid_size, reuse_images,shuffle_input,alpha_input)
 
 # write out mosaic
-if alpha_input == (255, 0):
-    mosaic_image.save(output_filename, 'jpeg')  #defalut, no alpha
+if alpha_input == [255, 0]:
+    mosaic_image.convert("RGB").save(output_filename, 'jpeg')  #defalut, no alpha, always discard alpha
 else:
     mosaic_image.save(output_filename, 'png')   #customer alpha
 
