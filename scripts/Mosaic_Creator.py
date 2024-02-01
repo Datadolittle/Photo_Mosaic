@@ -16,12 +16,14 @@ parser.add_argument('--no-resize', dest='resize', action='store_false')
 parser.set_defaults(resize=True)
 parser.add_argument('--shuffle', dest='shuffle', action='store_true',help='Whether shuffle the sequence when setting the grids')
 parser.set_defaults(shuffle=False)
+parser.add_argument('--alpha', nargs=2, dest='alpha', type=int, help='The alpha for images and target-image, The alpha values for images and target-image, in the range [0, 255]')
+parser.set_defaults(alpha=(255, 0))
 
 args = parser.parse_args()
 
 MATCH_INDECES = []
 
-def getImages(images_directory):
+def getImages(images_directory,alpha_input):
     files = os.listdir(images_directory)
     images = []
     for file in files:
@@ -29,6 +31,14 @@ def getImages(images_directory):
         try:
             fp = open(filePath, "rb")
             im = Image.open(fp)
+
+            if not alpha_input[0] == 255:
+                # in alpha[0] not default(255), reset alpha of every img
+                im=im.convert("RGBA")
+                r, g, b, alpha = im.split()
+                alpha = alpha.point(lambda i: i>0 and args.alpha[0])
+                im.putalpha(alpha)
+
             images.append(im)
             im.load()
             fp.close()
@@ -88,7 +98,8 @@ def createImageGrid(images, dims):
 
 def createPhotomosaic(target_image, input_images, grid_size,
                       reuse_images,
-                      if_shuffle):
+                      if_shuffle,
+                      alpha_input):
     target_images = splitImage(target_image, grid_size)
 
     # init a list. Using list[index] to set elements, no list.append().
@@ -117,17 +128,35 @@ def createPhotomosaic(target_image, input_images, grid_size,
         count += 1
 
     mosaic_image = createImageGrid(output_images, grid_size)
+
+    if not alpha_input[1] == 0:
+        
+        # reset the alpha layer of target_image
+        target_image = target_image.convert("RGBA")
+        r, g, b, alpha = target_image.split()
+        alpha = alpha.point(lambda i: i>0 and alpha_input[1])
+        target_image.putalpha(alpha)
+
+        # resize the target_image, matching the final out-img
+        target_image = target_image.resize(mosaic_image.size)
+
+        # merge target_image and Composite img
+        result_image = Image.alpha_composite(mosaic_image, target_image)
+        return (result_image)
+    
     return (mosaic_image)
 
 
 ### ---------------------------------------------
 
+# alpha value of ..
+alpha_input = args.alpha
 
 target_image = Image.open(args.target)
 
 # input images
 print('reading input folder...')
-input_images = getImages(args.images)
+input_images = getImages(args.images,alpha_input)
 
 # check if any valid input images found
 if input_images == []:
@@ -172,10 +201,14 @@ if resize_input:
         img.thumbnail(dims)
 
 # create photomosaic
-mosaic_image = createPhotomosaic(target_image, input_images, grid_size, reuse_images,shuffle_input)
+mosaic_image = createPhotomosaic(target_image, input_images, grid_size, reuse_images,shuffle_input,alpha_input)
 
 # write out mosaic
-mosaic_image.save(output_filename, 'jpeg')
+if alpha_input == (255, 0):
+    mosaic_image.save(output_filename, 'jpeg')  #defalut, no alpha
+else:
+    mosaic_image.save(output_filename, 'png')   #customer alpha
+
 
 print("saved output to %s" % (output_filename,))
 print('done.')
