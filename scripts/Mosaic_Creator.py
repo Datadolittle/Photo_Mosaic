@@ -16,7 +16,7 @@ parser.add_argument('--no-resize', dest='resize', action='store_false')
 parser.set_defaults(resize=True)
 parser.add_argument('--shuffle', dest='shuffle', action='store_true',help='Whether shuffle the sequence when setting the grids')
 parser.set_defaults(shuffle=False)
-parser.add_argument('--alpha', nargs=2, dest='alpha', type=int, help='The alpha for images and target-image, The alpha values for images and target-image, in the range [0, 255]')
+parser.add_argument('--alpha', nargs=2, dest='alpha', type=int, help='The alpha values for images and target-image, in the range [0, 255]')
 parser.set_defaults(alpha=[255, 0])
 parser.add_argument('--magnify', nargs=1, dest='magnification', type=float, help='Enlarge the final out_img, float type')
 parser.set_defaults(magnification=(1.0,))
@@ -26,7 +26,7 @@ args = parser.parse_args()
 
 MATCH_INDECES = []
 
-def getImages(images_directory,alpha_input):
+def getImages(images_directory):
     files = os.listdir(images_directory)
     images = []
     for file in files:
@@ -148,14 +148,14 @@ def createPhotomosaic(target_image, input_images, grid_size,
 
 ### ---------------------------------------------
 
-# alpha value of ..
+# alpha value of imgs and target_img
 alpha_input = args.alpha
 
 target_image = Image.open(args.target)
 
 # input images
 print('reading input folder...')
-input_images = getImages(args.images,alpha_input)
+input_images = getImages(args.images)
 
 # check if any valid input images found
 if input_images == []:
@@ -208,11 +208,7 @@ if resize_input:
 mosaic_image = createPhotomosaic(target_image, input_images, grid_size, reuse_images,shuffle_input,alpha_input)
 
 # write out mosaic
-if alpha_input == [255, 0]:
-    mosaic_image.convert("RGB").save(output_filename, 'jpeg')  #defalut, no alpha, always discard alpha
-else:
-    mosaic_image.save(output_filename, 'png')   #customer alpha
-
+mosaic_image.convert("RGB").save(output_filename, 'jpeg') # always output as jpeg to handle incorrect alpha band
 
 print("saved output to %s" % (output_filename,))
 print('done.')
