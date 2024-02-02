@@ -115,6 +115,9 @@ def createPhotomosaic(target_image, input_images, grid_size,
         try:
             avgs.append(getAverageRGB(img))
         except ValueError:
+            # If no append inf, avgs_index and  input_imgs_index will not correspond
+            avgs.append((float("inf"),float("inf"),float("inf")))   
+            print("An unsafe img is found, you may need to run Image_Tester.py to delete it")
             continue
 
     grid_indices = np.arange(len(target_images))
