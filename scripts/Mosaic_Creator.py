@@ -34,14 +34,6 @@ def getImages(images_directory,alpha_input):
         try:
             fp = open(filePath, "rb")
             im = Image.open(fp)
-
-            if not alpha_input[0] == 255:
-                # in alpha[0] not default(255), reset alpha of every img
-                im=im.convert("RGBA")
-                r, g, b, alpha = im.split()
-                alpha = alpha.point(lambda i: i>0 and alpha_input[0])
-                im.putalpha(alpha)
-      
             images.append(im)
             im.load()
             fp.close()
@@ -136,21 +128,21 @@ def createPhotomosaic(target_image, input_images, grid_size,
 
     mosaic_image = createImageGrid(output_images, grid_size)
 
-    if not alpha_input[1] == 0:
-        
-        # reset the alpha layer of target_image
-        target_image = target_image.convert("RGBA")
-        r, g, b, alpha = target_image.split()
-        alpha = alpha.point(lambda i: i>0 and alpha_input[1])
-        target_image.putalpha(alpha)
+    mosaic_image = mosaic_image.convert("RGBA")   #default 255
+    target_image = target_image.convert("RGBA")
 
-        # resize the target_image, matching the final out-img
-        target_image = target_image.resize(mosaic_image.size)
+    # resize the target_image, matching the final out-img
+    target_image = target_image.resize(mosaic_image.size)
 
-        # merge target_image and Composite img
-        result_image = Image.alpha_composite(mosaic_image, target_image)
-        return (result_image)
-    
+    if not alpha_input[0] == 255:
+        mosaic_image.putalpha(alpha_input[0])
+
+    if not alpha_input[1] == 255:
+        target_image.putalpha(alpha_input[1])
+
+
+    # merge target_image and Composite img
+    mosaic_image = Image.alpha_composite(mosaic_image, target_image)    # RGBA
     return (mosaic_image)
 
 
